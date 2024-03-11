@@ -30,30 +30,39 @@ app.post("/interactions", async function (req, res) {
     return res.status(400).send("Bad Request");
   }
 
-  const { name } = data;
+  try {
+    const { name } = data;
 
-  if (name === "ping") {
-    performance.mark("end");
-    const ping =
-      performance.measure("ping", "start", "end").duration.toFixed(3) * 1000;
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: `Pong - ${ping}ms`,
-      },
-    });
-  }
+    if (name === "ping") {
+      performance.mark("end");
+      const ping =
+        performance.measure("ping", "start", "end").duration.toFixed(3) * 1000;
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `Pong - ${ping}ms`,
+        },
+      });
+    }
 
-  if (name == "price") {
-    const usdToBrl = await getUsdPrice();
-    const crowToBrl = await getCrowPrice();
+    if (name == "price") {
+      const usdToBrl = await getUsdPrice();
+      const crowToBrl = await getCrowPrice();
 
-    return res.send({
-      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-      data: {
-        content: `
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `
 U$ -> R$ ${formatPrice(usdToBrl)}
 Crow -> R$ ${formatPrice(crowToBrl)}`,
+        },
+      });
+    }
+  } catch (err) {
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `Ops! Houve um erro ao consultar preço, tente novamente em instantes ou consulte diretamente (aqui)[https://wemixplay.com/en/tokens?search=crow]`,
       },
     });
   }
@@ -69,14 +78,14 @@ function formatPrice(price) {
 async function getUsdPrice() {
   return await fetch(API.USD)
     .then((res) => res.json())
-    .then((data) => data.usd.brl);
+    .then((data) => data?.usd?.brl);
 }
 
 async function getCrowPrice() {
   const usdToBrl = await getUsdPrice();
   return await fetch(API.CROW)
     .then((res) => res.json())
-    .then(({ data }) => data.token[0].priceData.price * usdToBrl);
+    .then(({ data }) => (data?.token?.[0]?.priceData?.price ?? 0) * usdToBrl);
 }
 
 async function updateStatus() {
@@ -93,7 +102,7 @@ async function updateStatus() {
   client.user.setPresence({
     activities: [
       {
-        name: "CROW - R$ " + formatPrice(crowToBrl) + " | " + nowString ,
+        name: "CROW - R$ " + formatPrice(crowToBrl) + " | " + nowString,
         type: ActivityType.Custom,
       },
     ],
