@@ -10,9 +10,9 @@ import fetch from "node-fetch";
 const app = express();
 const PORT = process.env.PORT || 3000;
 const API = {
-  USD: "https://api.coing2ecko.com/api/v3/simple/price?ids=usd&vs_currencies=brl",
-  WEMIX: "https://api.we2mix.network/price",
-  CROW: "https://api.we2mixplay.com/info/v2/coin?page=1&size=10&sort=tradingVolumeWD&search=crow",
+  USD: "https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=brl",
+  WEMIX: "https://api.wemix.network/price",
+  CROW: "https://api.wemixplay.com/info/v2/coin?page=1&size=10&sort=tradingVolumeWD&search=crow",
 };
 
 app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }));
