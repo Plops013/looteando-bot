@@ -1,60 +1,107 @@
-import 'dotenv/config';
-import express from 'express';
-import {
-  InteractionType,
-  InteractionResponseType,
-  InteractionResponseFlags,
-  MessageComponentTypes,
-  ButtonStyleTypes,
-} from 'discord-interactions';
-import { VerifyDiscordRequest, getRandomEmoji, DiscordRequest } from './utils.js';
-import { getShuffledOptions, getResult } from './game.js';
+import "dotenv/config";
 
-// Create an express app
+import { ActivityType, Client, GatewayIntentBits } from "discord.js";
+import { InteractionResponseType, InteractionType } from "discord-interactions";
+
+import { VerifyDiscordRequest } from "./utils.js";
+import express from "express";
+
 const app = express();
-// Get port, or default to 3000
 const PORT = process.env.PORT || 3000;
-// Parse request body and verifies incoming requests using discord-interactions package
+const API = {
+  USD: "https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=brl",
+  WEMIX: "https://api.wemix.network/price",
+  CROW: "https://api.wemixplay.com/info/v2/coin?page=1&size=10&sort=tradingVolumeWD&search=crow",
+};
+
 app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }));
 
-// Store for in-progress games. In production, you'd want to use a DB
-const activeGames = {};
+app.post("/interactions", async function (req, res) {
+  performance.mark("start");
 
-/**
- * Interactions endpoint URL where Discord will send HTTP requests
- */
-app.post('/interactions', async function (req, res) {
-  // Interaction type and data
-  const { type, id, data } = req.body;
+  const { type, data } = req.body;
 
-  /**
-   * Handle verification requests
-   */
   if (type === InteractionType.PING) {
     return res.send({ type: InteractionResponseType.PONG });
   }
 
-  /**
-   * Handle slash command requests
-   * See https://discord.com/developers/docs/interactions/application-commands#slash-commands
-   */
-  if (type === InteractionType.APPLICATION_COMMAND) {
-    const { name } = data;
+  if (!type === InteractionType.APPLICATION_COMMAND) {
+    return res.status(400).send("Bad Request");
+  }
 
-    // "test" command
-    if (name === 'test') {
-      // Send a message into the channel where command was triggered from
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          // Fetches a random emoji to send from a helper function
-          content: 'hello world ' + getRandomEmoji(),
-        },
-      });
-    }
+  const { name } = data;
+
+  if (name === "ping") {
+    performance.mark("end");
+    const ping =
+      performance.measure("ping", "start", "end").duration.toFixed(3) * 1000;
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `Pong - ${ping}ms`,
+      },
+    });
+  }
+
+  if (name == "price") {
+    const usdToBrl = await getUsdPrice();
+    const crowToBrl = await getCrowPrice();
+
+    return res.send({
+      type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+      data: {
+        content: `
+U$ -> R$ ${formatPrice(usdToBrl)}
+Crow -> R$ ${formatPrice(crowToBrl)}`,
+      },
+    });
   }
 });
 
+function formatPrice(price) {
+  return price.toLocaleString("pt-BR", {
+    maximumFractionDigits: 2,
+    minimumFractionDigits: 2,
+  });
+}
+
+async function getUsdPrice() {
+  return await fetch(API.USD)
+    .then((res) => res.json())
+    .then((data) => data.usd.brl);
+}
+
+async function getCrowPrice() {
+  const usdToBrl = await getUsdPrice();
+  return await fetch(API.CROW)
+    .then((res) => res.json())
+    .then(({ data }) => data.token[0].priceData.price * usdToBrl);
+}
+
+async function updateStatus() {
+  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+  await client.login(process.env.DISCORD_TOKEN);
+
+  const crowToBrl = await getCrowPrice();
+
+  const nowString =
+    new Date().getHours().toLocaleString("pt-BR", { minimumIntegerDigits: 2 }) +
+    ":" +
+    new Date().getMinutes();
+
+  client.user.setPresence({
+    activities: [
+      {
+        name: "CROW - R$ " + formatPrice(crowToBrl) + " | " + nowString ,
+        type: ActivityType.Custom,
+      },
+    ],
+    status: "online",
+  });
+}
+
 app.listen(PORT, () => {
-  console.log('Listening on port', PORT);
+  updateStatus();
+  setInterval(updateStatus, 60000 * 5);
+  console.log("[APP.JS] ", PORT);
 });

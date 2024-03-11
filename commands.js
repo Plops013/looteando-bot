@@ -1,45 +1,33 @@
-import 'dotenv/config';
-import { getRPSChoices } from './game.js';
-import { capitalize, InstallGlobalCommands } from './utils.js';
+import "dotenv/config";
 
-// Get the game choices from game.js
-function createCommandChoices() {
-  const choices = getRPSChoices();
-  const commandChoices = [];
+import { DiscordRequest } from "./utils.js";
 
-  for (let choice of choices) {
-    commandChoices.push({
-      name: capitalize(choice),
-      value: choice.toLowerCase(),
-    });
+const PING_COMMAND = {
+  name: "ping",
+  description: "Ping the bot to check if it is online",
+  type: 1,
+};
+
+const PRICE_COMMAND = {
+  name: "price",
+  description: "Get the price of all (WEMADE) Night Crows Tokens",
+  type: 1,
+};
+
+const ALL_COMMANDS = [PING_COMMAND, PRICE_COMMAND];
+
+async function InstallGlobalCommands(appId, commands) {
+  console.log("[COMMAND.JS] Starting");
+  console.table(commands);
+  
+  const endpoint = `applications/${appId}/commands`;
+
+  try {
+    await DiscordRequest(endpoint, { method: "PUT", body: commands });
+    console.log("[COMMAND.JS] Commands Registered!");
+  } catch (err) {
+    console.error("[COMMAND.JS] Error installing commands: ", err);
   }
-
-  return commandChoices;
 }
-
-// Simple test command
-const TEST_COMMAND = {
-  name: 'test',
-  description: 'Basic command',
-  type: 1,
-};
-
-// Command containing options
-const CHALLENGE_COMMAND = {
-  name: 'challenge',
-  description: 'Challenge to a match of rock paper scissors',
-  options: [
-    {
-      type: 3,
-      name: 'object',
-      description: 'Pick your object',
-      required: true,
-      choices: createCommandChoices(),
-    },
-  ],
-  type: 1,
-};
-
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);
