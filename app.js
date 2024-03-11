@@ -10,9 +10,9 @@ import fetch from "node-fetch";
 const app = express();
 const PORT = process.env.PORT || 3000;
 const API = {
-  USD: "https://api.coingecko.com/api/v3/simple/price?ids=usd&vs_currencies=brl",
-  WEMIX: "https://api.wemix.network/price",
-  CROW: "https://api.wemixplay.com/info/v2/coin?page=1&size=10&sort=tradingVolumeWD&search=crow",
+  USD: "https://api.coing2ecko.com/api/v3/simple/price?ids=usd&vs_currencies=brl",
+  WEMIX: "https://api.we2mix.network/price",
+  CROW: "https://api.we2mixplay.com/info/v2/coin?page=1&size=10&sort=tradingVolumeWD&search=crow",
 };
 
 app.use(express.json({ verify: VerifyDiscordRequest(process.env.PUBLIC_KEY) }));
@@ -62,14 +62,14 @@ Crow -> R$ ${formatPrice(crowToBrl)}`,
     return res.send({
       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
       data: {
-        content: `Ops! Houve um erro ao consultar preço, tente novamente em instantes ou consulte diretamente (aqui)[https://wemixplay.com/en/tokens?search=crow]`,
+        content: `Ops! Houve um erro ao consultar preço, tente novamente em instantes ou consulte diretamente [aqui](https://wemixplay.com/en/tokens?search=crow)`,
       },
     });
   }
 });
 
 function formatPrice(price) {
-  if(typeof price !== "number") return "ERROR";
+  if (typeof price !== "number") return "-,--";
   return price.toLocaleString("pt-BR", {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
@@ -90,30 +90,36 @@ async function getCrowPrice() {
 }
 
 async function updateStatus() {
-  const client = new Client({ intents: [GatewayIntentBits.Guilds] });
-  await client.login(process.env.DISCORD_TOKEN);
+  try {
+    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    await client.login(process.env.DISCORD_TOKEN);
 
-  const crowToBrl = await getCrowPrice();
+    const crowToBrl = await getCrowPrice();
 
-  const serverDate = new Date();
-  const brazilDate = new Date(
-    serverDate.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
-  );
+    const serverDate = new Date();
+    const brazilDate = new Date(
+      serverDate.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
+    );
 
-  const nowString =
-    new Date().getHours().toLocaleString("pt-BR", { minimumIntegerDigits: 2 }) +
-    ":" +
-    new Date().getMinutes();
+    const nowString =
+      brazilDate
+        .getHours()
+        .toLocaleString("pt-BR", { minimumIntegerDigits: 2 }) +
+      ":" +
+      brazilDate.getMinutes();
 
-  client.user.setPresence({
-    activities: [
-      {
-        name: "CROW - R$ " + formatPrice(crowToBrl) + " | " + nowString,
-        type: ActivityType.Custom,
-      },
-    ],
-    status: "online",
-  });
+    client.user.setPresence({
+      activities: [
+        {
+          name: "CROW - R$ " + formatPrice(crowToBrl) + " | " + nowString,
+          type: ActivityType.Custom,
+        },
+      ],
+      status: "online",
+    });
+  } catch (err) {
+    console.error("[APP.JS] Error updating status: ", err);
+  }
 }
 
 app.listen(PORT, () => {
