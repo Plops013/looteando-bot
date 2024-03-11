@@ -69,6 +69,7 @@ Crow -> R$ ${formatPrice(crowToBrl)}`,
 });
 
 function formatPrice(price) {
+  if(typeof price !== "number") return "ERROR";
   return price.toLocaleString("pt-BR", {
     maximumFractionDigits: 2,
     minimumFractionDigits: 2,
@@ -93,6 +94,11 @@ async function updateStatus() {
   await client.login(process.env.DISCORD_TOKEN);
 
   const crowToBrl = await getCrowPrice();
+
+  const serverDate = new Date();
+  const brazilDate = new Date(
+    serverDate.toLocaleString("en-US", { timeZone: "America/Sao_Paulo" })
+  );
 
   const nowString =
     new Date().getHours().toLocaleString("pt-BR", { minimumIntegerDigits: 2 }) +
